@@ -3,6 +3,7 @@ package wave
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -322,18 +323,19 @@ func (rd *Reader) ReadSample16() ([]int16, error) {
 }
 
 func (rd *Reader) ReadSample32() ([]int32, error) {
+	channel := int(rd.FmtChunk.Data.Channel)
+
 	ret := make([]int32, channel)
 	raw, err := rd.ReadRawSample()
 	if err != nil {
 		return ret, err
 	}
-	channel := int(rd.FmtChunk.Data.Channel)
 
 	length := len(raw) / channel // 1チャンネルあたりのbyte数
 
 	if length != 4 {
 		err = errors.New("length must be 4 bytes for 32 bit int")
-		return
+		return ret, err
 	}
 
 	for i := 0; i < channel; i++ {
