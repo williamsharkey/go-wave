@@ -84,6 +84,19 @@ func (w *Writer) WriteSample16(samples []int16) (int, error) {
 	return n, err
 }
 
+func (w *Writer) WriteSample32(samples []int32) (int, error) {
+	buf := new(bytes.Buffer)
+
+	for i := 0; i < len(samples); i++ {
+		err := binary.Write(buf, binary.LittleEndian, samples[i])
+		if err != nil {
+			return 0, err
+		}
+	}
+	n, err := w.Write(buf.Bytes())
+	return n, err
+}
+
 func (w *Writer) WriteSample24(samples []byte) (int, error) {
 	return 0, fmt.Errorf("WriteSample24 is not implemented")
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"unsafe"
 )
 
 type WaveReader interface {
@@ -274,7 +275,93 @@ func (rd *Reader) ReadSample() ([]float64, error) {
 		case 8:
 			ret[i] = float64(tmp-128) / 128.0
 		case 16:
-			ret[i] = float64(tmp) / 32768.0
+			const div16 = float64(1) / float64(32768)
+			x, _ := binary.Varint(raw[length*i : length*(i+1)])
+			//if err!=nil{
+			//	return ret,err
+			//}
+			ret[i] = float64(x) * div16
+		case 32:
+			ret[i] = float64(tmp) / 2147483647.0
+		}
+		if err != nil && err != io.EOF {
+			return ret, err
+		}
+	}
+	return ret, nil
+}
+
+func (rd *Reader) ReadSample16() ([]int16, error) {
+	raw, err := rd.ReadRawSample()
+	channel := int(rd.FmtChunk.Data.Channel)
+	ret := make([]int16, channel)
+	length := len(raw) / channel // 1チャンネルあたりのbyte数
+
+	if err != nil {
+		return ret, err
+	}
+
+	for i := 0; i < channel; i++ {
+		//tmp := bytesToInt(raw[length*i : length*(i+1)])
+		switch rd.FmtChunk.Data.BitsPerSamples {
+
+		case 16:
+
+			x, _ := binary.Varint(raw[length*i : length*(i+1)])
+			//if err!=nil{
+			//	return ret,err
+			//}
+			ret[i] = int16(x)
+
+		}
+		if err != nil && err != io.EOF {
+			return ret, err
+		}
+	}
+	return ret, nil
+}
+
+func (rd *Reader) ReadSample32() ([]int32, error) {
+	ret := make([]int32, channel)
+	raw, err := rd.ReadRawSample()
+	if err != nil {
+		return ret, err
+	}
+	channel := int(rd.FmtChunk.Data.Channel)
+
+	length := len(raw) / channel // 1チャンネルあたりのbyte数
+
+	if length != 4 {
+		err = errors.New("length must be 4 bytes for 32 bit int")
+		return
+	}
+
+	for i := 0; i < channel; i++ {
+		//	tmp := bytesToInt(raw[length*i : length*(i+1)])
+		switch rd.FmtChunk.Data.BitsPerSamples {
+
+		case 32:
+
+			//x, _ := binary.Varint(])
+			//arr:=raw[length*i:length*(i+1)]
+			//arr2:=[4]byte{arr[0],arr[1],arr[2],arr[3]}
+			q := [4]byte{raw[4*i+0], raw[4*i+1], raw[4*i+2], raw[4*i+3]}
+
+			//y:= binary.LittleEndian.Uint32()
+			s := *(*int32)(unsafe.Pointer(&q))
+			//x := int64(y >> 1)
+			//if y&1 != 0 {
+			//	x = ^x
+			//}
+			//if err!=nil{
+			//	return ret,err
+			//}
+			//z:=int64(y)>>1
+			//if y&1!=0{
+			//	z=^z
+			//}
+			ret[i] = s //int32(z)
+
 		}
 		if err != nil && err != io.EOF {
 			return ret, err
